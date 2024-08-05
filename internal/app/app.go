@@ -4,12 +4,14 @@ import (
 	"ShelterGame/internal/config"
 	"ShelterGame/internal/database/sqlite"
 	"ShelterGame/internal/dtos"
+	"ShelterGame/internal/render"
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
 	tu "github.com/mymmrac/telego/telegoutil"
 	"gorm.io/gorm/utils"
 	"log/slog"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -28,14 +30,15 @@ func main() {
 
 	keyboard := tu.Keyboard(getUsers()).WithSelective().WithResizeKeyboard().WithInputFieldPlaceholder("Select something")
 	bh.Handle(func(bot *telego.Bot, update telego.Update) {
-		var count *int64
-		sqlite.GetDB().Model(&dtos.User{}).Where("chat_id=?", update.Message.Chat.ID).Count(count)
-		if count == nil {
+		var count int64
+		sqlite.GetDB().Model(&dtos.User{}).Where("chat_id=?", update.Message.Chat.ID).Debug().Count(&count)
+		if count == 0 {
 			user := dtos.User{
 				Username: update.Message.From.Username,
 				ChatId:   update.Message.Chat.ID,
 			}
 			sqlite.GetDB().Model(&dtos.User{}).Debug().Create(&user)
+			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), "Congratulation! You are now connected to the chat."))
 		} else {
 			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), "You are already signed"))
 
@@ -44,19 +47,35 @@ func main() {
 	}, th.CommandEqual("start"))
 
 	bh.Handle(func(bot *telego.Bot, update telego.Update) {
-		_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), "You are already signed").WithReplyMarkup(keyboard))
 
-	}, th.CommandEqual("w"))
+		/*if len(gameMembers) <= 5 {
+			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), "Cant start game.Add more members.").WithReplyMarkup(keyboard))
+		 return
+		}*/
+
+		for index, member := range gameMembers {
+			var chatId int64
+			sqlite.GetDB().Raw("select chat_id from users where username=?", member).Debug().Scan(&chatId)
+			result := render.Render(strconv.Itoa(index + 1))
+			_, _ = bot.SendMessage(tu.Message(telego.ChatID{
+				ID: chatId,
+			}, result))
+
+		}
+
+	}, th.CommandEqual("startGame"))
 
 	bh.Handle(func(bot *telego.Bot, update telego.Update) {
-		if gameMembers != nil {
+		keyboard = tu.Keyboard(getUsers()).WithSelective().WithResizeKeyboard().WithInputFieldPlaceholder("Select something")
+
+		if gameMembers != nil && len(gameMembers) != 0 {
 			message := ""
-			for _, member := range gameMembers {
-				message += member + "\n"
+			for index, member := range gameMembers {
+				message += strconv.Itoa(index+1) + ". " + member + "\n"
 			}
-			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), message))
+			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), message).WithReplyMarkup(keyboard))
 		} else {
-			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), "No any players"))
+			_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), "No any players").WithReplyMarkup(keyboard))
 
 		}
 
@@ -72,7 +91,8 @@ func main() {
 	bh.Handle(func(bot *telego.Bot, update telego.Update) {
 		if update.Message.Text != "" && update.Message.Text[:1] == "-" && isUserExists(update.Message.Text[1:]) {
 			if utils.Contains(gameMembers, update.Message.Text[1:]) {
-				_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), update.Message.Text[1:]+" already added"))
+				gameMembers = remove(gameMembers, getNumber(gameMembers, update.Message.Text[1:]))
+				_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), update.Message.Text[1:]+" removed"))
 			} else {
 				gameMembers = append(gameMembers, update.Message.Text[1:])
 				_, _ = bot.SendMessage(tu.Message(update.Message.Chat.ChatID(), update.Message.Text[1:]+" successfully added"))
@@ -109,4 +129,17 @@ func isUserExists(username string) bool {
 		return false
 	}
 	return true
+}
+
+func remove(slice []string, s int) []string {
+	return append(slice[:s], slice[s+1:]...)
+}
+
+func getNumber(slice []string, value string) int {
+	for i, s := range slice {
+		if s == value {
+			return i
+		}
+	}
+	return -1
 }
