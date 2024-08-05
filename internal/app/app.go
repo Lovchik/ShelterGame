@@ -14,9 +14,8 @@ import (
 	"strconv"
 )
 
-// TODO
-// 1.Исправить создание бункера и катастрофы, сейчас могут отличаться
-// 2.Добавить рандом для возраста
+// /TODO 1.Исправить создание бункера и катастрофы, сейчас могут отличаться
+// /TODO 2.Добавить рерол полей
 func main() {
 	bot, err := telego.NewBot(config.GetConfig().TelegramToken, telego.WithDefaultDebugLogger())
 	if err != nil {
