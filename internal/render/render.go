@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,7 +30,7 @@ var order = map[string]Pair{
 	},
 	"-5-": {
 		tableName: "",
-		rollKind:  "hardcode",
+		rollKind:  "rollHealth",
 	},
 	"-6-": {
 		tableName: "hobby",
@@ -89,11 +90,32 @@ func rollWithChance(tableName string, firstChance int) string {
 func roll(tableName string) string {
 	var count int64
 	var result string
+	rand.Seed(time.Now().UnixNano())
 	query := fmt.Sprintf("SELECT Count(id) FROM %s", tableName)
 	sqlite.GetDB().Raw(query).Debug().Count(&count)
 	randomValue := rand.Intn(int(count)) + 1
 	query = fmt.Sprintf("SELECT name FROM %s where id=?", tableName)
 	sqlite.GetDB().Raw(query, randomValue).Debug().Scan(&result)
+	return result
+}
+
+func rollHealth() string {
+	var result, sqlResult string
+	rand.Seed(time.Now().UnixNano())
+	//рол на гендер
+	sqlite.GetDB().Raw("SELECT name FROM gender ORDER BY RANDOM() LIMIT 1;").Debug().Scan(&sqlResult)
+	result += sqlResult + ", "
+	//рол на возраст
+	randomValue := rand.Intn(100) + 1
+	if randomValue >= 50 {
+		randomValue = rand.Intn(41) + 45
+	} else {
+		randomValue = rand.Intn(32) + 16
+	}
+	result += strconv.Itoa(randomValue) + ", "
+
+	result += rollWithChance("sexual_orientation", 30)
+
 	return result
 }
 
@@ -107,11 +129,10 @@ func decide(pair Pair) string {
 		{
 			return rollWithChance(pair.tableName, 30)
 		}
-	case "hardcode":
+	case "rollHealth":
 		{
-			return "Не готово еще"
+			return rollHealth()
 		}
-
 	}
 	return ""
 }
