@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"ShelterGame/internal/config"
@@ -16,7 +16,7 @@ import (
 
 // /TODO 1.Исправить создание бункера и катастрофы, сейчас могут отличаться
 // /TODO 2.Добавить рерол полей
-func main() {
+func StartBot() {
 	bot, err := telego.NewBot(config.GetConfig().TelegramToken, telego.WithDefaultDebugLogger())
 	if err != nil {
 		slog.Error(err.Error())
