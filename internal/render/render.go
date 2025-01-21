@@ -11,14 +11,16 @@ import (
 	"time"
 )
 
+var accident, shelterInfo string
+
 var order = map[string]Pair{
 	"-1-": {
 		tableName: "accident",
-		rollKind:  "roll",
+		rollKind:  "rollOnce",
 	},
 	"-2-": {
 		tableName: "shelter_info",
-		rollKind:  "roll",
+		rollKind:  "rollOnce",
 	},
 	"-3-": {
 		tableName: "profession",
@@ -125,6 +127,10 @@ func decide(pair Pair) string {
 		{
 			return roll(pair.tableName)
 		}
+	case "rollOnce":
+		{
+			return rollOnce(pair.tableName)
+		}
 	case "rollWithChance":
 		{
 			return rollWithChance(pair.tableName, 30)
@@ -135,4 +141,25 @@ func decide(pair Pair) string {
 		}
 	}
 	return ""
+}
+
+func rollOnce(tableName string) string {
+	if tableName == "accident" {
+		if accident == "" {
+			accident = roll(tableName)
+		}
+		return accident
+	}
+	if tableName == "shelter_info" {
+		if shelterInfo == "" {
+			shelterInfo = roll(tableName)
+		}
+		return shelterInfo
+	}
+	return ""
+}
+
+func UpdateValuesToNextGame() {
+	accident = ""
+	shelterInfo = ""
 }

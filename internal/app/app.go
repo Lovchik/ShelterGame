@@ -14,7 +14,6 @@ import (
 	"strconv"
 )
 
-// /TODO 1.Исправить создание бункера и катастрофы, сейчас могут отличаться
 // /TODO 2.Добавить рерол полей
 func StartBot() {
 	bot, err := telego.NewBot(config.GetConfig().TelegramToken, telego.WithDefaultDebugLogger())
@@ -30,7 +29,7 @@ func StartBot() {
 	defer bh.Stop()
 	defer bot.StopLongPolling()
 
-	keyboard := tu.Keyboard(getUsers()).WithSelective().WithResizeKeyboard().WithInputFieldPlaceholder("Select something")
+	keyboard := tu.Keyboard(getKeyboard()...).WithSelective().WithResizeKeyboard().WithInputFieldPlaceholder("Select something")
 	bh.Handle(func(bot *telego.Bot, update telego.Update) {
 		var count int64
 		sqlite.GetDB().Model(&dtos.User{}).Where("chat_id=?", update.Message.Chat.ID).Debug().Count(&count)
@@ -64,11 +63,12 @@ func StartBot() {
 			}, result))
 
 		}
+		render.UpdateValuesToNextGame()
 
 	}, th.CommandEqual("startGame"))
 
 	bh.Handle(func(bot *telego.Bot, update telego.Update) {
-		keyboard = tu.Keyboard(getUsers()).WithSelective().WithResizeKeyboard().WithInputFieldPlaceholder("Select something")
+		keyboard = tu.Keyboard(getKeyboard()...).WithSelective().WithResizeKeyboard().WithInputFieldPlaceholder("Select something")
 
 		if gameMembers != nil && len(gameMembers) != 0 {
 			message := ""
@@ -105,13 +105,15 @@ func StartBot() {
 	bh.Start()
 }
 
-func getUsers() []telego.KeyboardButton {
+func getUsers() [][]telego.KeyboardButton {
 	var users []dtos.User
 	sqlite.GetDB().Model(&dtos.User{}).Find(&users)
-	var buttons []telego.KeyboardButton
 
-	for _, user := range users {
-		buttons = append(buttons, telego.KeyboardButton{
+	var buttons [][]telego.KeyboardButton
+	var row []telego.KeyboardButton
+
+	for i, user := range users {
+		row = append(row, telego.KeyboardButton{
 			Text:            "-" + user.Username,
 			RequestUsers:    nil,
 			RequestChat:     nil,
@@ -120,7 +122,13 @@ func getUsers() []telego.KeyboardButton {
 			RequestPoll:     nil,
 			WebApp:          nil,
 		})
+
+		if (i+1)%4 == 0 || i == len(users)-1 {
+			buttons = append(buttons, row)
+			row = []telego.KeyboardButton{}
+		}
 	}
+
 	return buttons
 }
 
@@ -144,4 +152,17 @@ func getNumber(slice []string, value string) int {
 		}
 	}
 	return -1
+}
+
+func getAdmButtons() []telego.KeyboardButton {
+	var buttons []telego.KeyboardButton
+
+	buttons = append(buttons, telego.KeyboardButton{Text: "/startGame"}, telego.KeyboardButton{Text: "/checkPlayers"}, telego.KeyboardButton{Text: "/clearList"})
+
+	return buttons
+}
+
+func getKeyboard() [][]telego.KeyboardButton {
+	keyboard := append(getUsers(), getAdmButtons())
+	return keyboard
 }
