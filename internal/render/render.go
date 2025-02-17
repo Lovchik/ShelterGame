@@ -1,6 +1,7 @@
 package render
 
 import (
+	"ShelterGame/internal/config"
 	"ShelterGame/internal/database/sqlite"
 	"fmt"
 	"log/slog"
@@ -62,7 +63,7 @@ type Pair struct {
 }
 
 func Render(memberNumber string) string {
-	file, err := os.ReadFile("/Users/vitali.louchy/Desktop/ShelterGame/sample")
+	file, err := os.ReadFile(config.GetConfig().TelegramToken)
 	if err != nil {
 		panic(err)
 	}

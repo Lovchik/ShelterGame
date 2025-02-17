@@ -11,6 +11,7 @@ var config Config
 type Config struct {
 	TelegramToken string
 	DatabaseUrl   string
+	Sample        string
 }
 
 func init() {
@@ -21,6 +22,7 @@ func init() {
 	config = Config{
 		TelegramToken: getEnv("TELEGRAM_TOKEN", ""),
 		DatabaseUrl:   getEnv("DATABASE_URL", ""),
+		Sample:        getEnv("SAMPLE", ""),
 	}
 }
 
