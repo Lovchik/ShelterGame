@@ -63,7 +63,7 @@ type Pair struct {
 }
 
 func Render(memberNumber string) string {
-	file, err := os.ReadFile(config.GetConfig().TelegramToken)
+	file, err := os.ReadFile(config.GetConfig().Sample)
 	if err != nil {
 		panic(err)
 	}
