@@ -35,6 +35,7 @@ jobs:
       - name: Transfer new binary to server
         run: |
           scp -o StrictHostKeyChecking=no ./shelterGame root@${{ secrets.SERVER_IP }}:/root/shelterGame/shelterGame_new
+          scp -o StrictHostKeyChecking=no ./${{ secrets.SAMPLE }} root@${{ secrets.SERVER_IP }}:/root/shelterGame/${{ secrets.SAMPLE }}
 
       - name: Replace old binary with new one
         run: |
