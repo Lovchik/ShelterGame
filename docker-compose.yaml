@@ -1,0 +1,8 @@
+services:
+
+  game:
+    build: .
+    environment:
+      TELEGRAM_TOKEN : "1104774405:AAGWXgurvElyYDcT6XnNLydd2Tlmwp3vDuc"
+      DATABASE_URL : "base.db"
+      SAMPLE : "sample"
