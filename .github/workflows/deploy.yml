@@ -1,30 +1,52 @@
-name: Deploy
+name: Build and Deploy Go Application
 
 on:
-  workflow_dispatch
-
-env:
-  SERVER_HOST: 185.157.215.106
-  SERVER_USER: root
-  SERVER_PATH: /root/github-test
+  push:
+    branches:
+      - main
 
 jobs:
-
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Install ssh key
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2.3.1
+      - name: Set up Go
+        uses: actions/setup-go@v3
         with:
-          key: "${{ secrets.SERVER_KEY }}"
-          known_hosts: "just-a-placeholder-so-we-dont-get-errors"
-          
-      - name: Generate auth hosts
-        run: ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts
+          go-version: 1.24
 
-      # Deploy
-      - run: rsync --archive --compress --progress . ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.SERVER_PATH }}
+      - name: Build the Go application
+        run: |
+          export CGO_ENABLED=1
+          apt-get update && apt-get install -y gcc libc-dev libsqlite3-dev ca-certificates tzdata sqlite3
+          go build -o shelterGame ./cmd/app/main.go
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh/
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SERVER_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Transfer new binary to server
+        run: |
+          scp -o StrictHostKeyChecking=no ./shelterGame root@${{ secrets.SERVER_IP }}:/root/shelterGame/shelterGame_new
+
+      - name: Replace old binary with new one
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} "mv /root/shelterGame/shelterGame_new /root/shelterGame/shelterGame"
+
+      - name: Create environment file on server
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} "echo 'TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}' > /root/shelterGame/.env"
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} "echo 'DATABASE_URL=${{ secrets.DATABASE_URL }}' >> /root/shelterGame/.env"
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} "echo 'SAMPLE=${{ secrets.SAMPLE }}' >> /root/shelterGame/.env"
+
+      - name: Restart service on server with environment variable
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} "systemctl restart shelterGame.service"
+
